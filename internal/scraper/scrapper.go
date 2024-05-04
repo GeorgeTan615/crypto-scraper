@@ -1,0 +1,170 @@
+package scraper
+
+import (
+	"context"
+	"encoding/csv"
+	"fmt"
+	"log"
+	"os"
+	"sync"
+	"time"
+
+	"github.com/crypto-scraper/internal/scheduler"
+	"github.com/crypto-scraper/internal/scraper/exchanges/binance"
+	"github.com/crypto-scraper/internal/scraper/exchanges/luno"
+	"github.com/crypto-scraper/internal/scraper/message"
+	"github.com/crypto-scraper/internal/types"
+	"github.com/reconquest/karma-go"
+)
+
+type (
+	Scrapper interface {
+		Scrape(ctx context.Context, req *message.ScrapeRequest) (message.CSVData, error)
+	}
+
+	ScrapperManager struct {
+		registry map[types.Exchange]map[types.Type]Scrapper
+	}
+)
+
+func NewScrapperManager() *ScrapperManager {
+	return &ScrapperManager{}
+}
+
+func (sm *ScrapperManager) Init() {
+	sm.registry = map[types.Exchange]map[types.Type]Scrapper{
+		types.BINANCE: {
+			types.ORDER_BOOK: binance.NewBinanceOrderBookScrapper(),
+		},
+		types.LUNO: {
+			types.ORDER_BOOK: luno.NewLunoOrderBookScrapper(),
+		},
+	}
+}
+
+func (sm *ScrapperManager) Start(
+	ctx context.Context,
+	inputExchanges []types.Exchange,
+	inputTypes []types.Type,
+	symbols []string,
+	interval time.Duration,
+) {
+	var wg sync.WaitGroup
+
+	for _, exchange := range inputExchanges {
+		for _, typ := range inputTypes {
+			for _, symbol := range symbols {
+				logContext := karma.
+					Describe("exchange", exchange).
+					Describe("type", typ)
+
+				t, ok := sm.registry[exchange]
+				if !ok {
+					log.Println(karma.Format(logContext, "exchange not registered"))
+					continue
+				}
+
+				s, ok := t[typ]
+				if !ok {
+					log.Println(karma.Format(logContext, "type not registered"))
+					continue
+				}
+
+				wg.Add(1)
+				go func(exchange types.Exchange, typ types.Type, symbol string, interval time.Duration) {
+					defer wg.Done()
+
+					sm.StartScrapper(
+						ctx,
+						s,
+						exchange,
+						typ,
+						symbol,
+						interval,
+					)
+				}(exchange, typ, symbol, interval)
+			}
+		}
+	}
+
+	wg.Wait()
+}
+
+func (sm *ScrapperManager) StartScrapper(
+	ctx context.Context,
+	scraper Scrapper,
+	exchange types.Exchange,
+	typ types.Type,
+	symbol string,
+	interval time.Duration,
+) {
+	logContext := karma.
+		Describe("exchange", exchange).
+		Describe("type", typ).
+		Describe("symbol", symbol)
+
+	// create destinationn file
+	csvFile, err := os.Create(
+		fmt.Sprintf(
+			"%s_%s_%s.csv",
+			exchange,
+			typ,
+			time.Now().Format("2006-01-02_15_04_05")))
+	if err != nil {
+		log.Fatalf("failed creating file: %s", err)
+		return
+	}
+	defer csvFile.Close()
+
+	var (
+		csvWriter         = csv.NewWriter(csvFile)
+		areHeadersWritten = false
+		chRes             = make(chan []string, 1000)
+		wg                sync.WaitGroup
+	)
+
+	// collect data and write to csv
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		for data := range chRes {
+			err := csvWriter.Write(data)
+			if err != nil {
+				log.Println(logContext.
+					Describe("operation", "write csv").
+					Describe("data", data).
+					Reason(err))
+				continue
+			}
+
+			csvWriter.Flush()
+		}
+	}()
+
+	// start scheduler to scrap data periodically
+	scheduler := scheduler.NewScheduler(interval, func(c context.Context) {
+		ctx, cancel := context.WithTimeout(c, 5*time.Second)
+		defer cancel()
+
+		csvData, err := scraper.Scrape(ctx, &message.ScrapeRequest{Symbol: symbol})
+		if err != nil {
+			log.Println(logContext.Describe("operation", "scrape").Reason(err))
+			return
+		}
+
+		// write headers if file is empty
+		if !areHeadersWritten {
+			chRes <- csvData.GetHeaders()
+			areHeadersWritten = true
+		}
+
+		// write scraped data to csv
+		chRes <- csvData.Get()
+	})
+
+	log.Println(logContext.Reason("start scraping"))
+	scheduler.Start(ctx)
+	close(chRes)
+	log.Println(logContext.Reason("stop scraping"))
+}
