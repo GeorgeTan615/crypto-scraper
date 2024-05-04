@@ -140,7 +140,7 @@ func (sm *ScrapperManager) StartScrapper(
 		}
 	}()
 
-	// start scheduler to scrap data periodically
+	// start scheduler to scrape data periodically
 	scheduler := scheduler.NewScheduler(interval, func(c context.Context) {
 		ctx, cancel := context.WithTimeout(c, 5*time.Second)
 		defer cancel()

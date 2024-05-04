@@ -33,8 +33,7 @@ Options:
   --version     Show version.`
 
 type config struct {
-	ExchangeConfigs map[types.Exchange]map[types.Type]map[string]time.Duration `yaml:"exchanges"`
-	Interval        time.Duration                                              `yaml:"interval"`
+	ExchangesScrapeConfig map[types.Exchange]map[types.Type]map[string]time.Duration `yaml:"exchanges"`
 }
 
 func main() {
@@ -54,7 +53,7 @@ func main() {
 		syscall.SIGTERM)
 	defer cancel()
 
-	sm.Start(ctx, config.ExchangeConfigs)
+	sm.Start(ctx, config.ExchangesScrapeConfig)
 }
 
 func parseCLIArgs() (*config, error) {
