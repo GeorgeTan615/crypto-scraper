@@ -2,17 +2,15 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
-	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/crypto-scraper/internal/scraper"
 	"github.com/crypto-scraper/internal/types"
+	"gopkg.in/yaml.v3"
 
 	"github.com/docopt/docopt-go"
 	"github.com/reconquest/karma-go"
@@ -23,31 +21,27 @@ var usage = `crypto_scraper
 Scrapes data off exchanges.
 
 Usage:
-  crypto_scraper --exchanges <exchanges> --types <types> --interval <interval> --symbols <symbols>
+  crypto_scraper --config <config>
   crypto_scraper -h | --help
   crypto_scraper --version
 
 Required options:
-  -e --exchanges <exchanges>	   	Exchanges to scrape from (delimited by ',')
-  -t --types <types>						Data types to scrape from exchanges (delimited by ',')
-  -s --symbols <symbols>				Symbols to scrape (delimited by ',')
-  -i --interval <interval>  			Scrape interval (seconds)
+  -c --config <config>					File path to config file
 
 Options:
   -h --help     Show this screen.
   --version     Show version.`
 
-type Config struct {
-	Exchanges []types.Exchange
-	Types     []types.Type
-	Symbols   []string
-	Interval  time.Duration
+type config struct {
+	ExchangeConfigs map[types.Exchange]map[types.Type]map[string]time.Duration `yaml:"exchanges"`
+	Interval        time.Duration                                              `yaml:"interval"`
 }
 
 func main() {
 	config, err := parseCLIArgs()
 	if err != nil {
 		log.Fatalln(karma.Format(err, "parse cli args"))
+		return
 	}
 
 	sm := scraper.NewScrapperManager()
@@ -60,50 +54,34 @@ func main() {
 		syscall.SIGTERM)
 	defer cancel()
 
-	sm.Start(ctx, config.Exchanges, config.Types, config.Symbols, config.Interval)
+	sm.Start(ctx, config.ExchangeConfigs)
 }
 
-func parseCLIArgs() (*Config, error) {
+func parseCLIArgs() (*config, error) {
 	args, err := docopt.ParseArgs(usage, nil, "")
 	if err != nil {
 		return nil, karma.Format(err, "parse arguments")
 	}
 
-	var config struct {
-		Exchanges string `docopt:"--exchanges"`
-		Types     string `docopt:"--types"`
-		Interval  string `docopt:"--interval"`
-		Symbols   string `docopt:"--symbols"`
+	var arguments struct {
+		ConfigFilePath string `docopt:"--config"`
 	}
 
-	err = args.Bind(&config)
+	err = args.Bind(&arguments)
 	if err != nil {
 		return nil, karma.Format(err, "bind arguments")
 	}
 
-	exchangesStr := strings.Split(config.Exchanges, ",")
-	typeStr := strings.Split(config.Types, ",")
-	symbols := strings.Split(config.Symbols, ",")
-
-	exchanges := types.MapExchanges(exchangesStr)
-	if len(exchanges) == 0 {
-		return nil, fmt.Errorf("no allowed exchanges: %v", config.Exchanges)
-	}
-
-	types := types.MapTypes(typeStr)
-	if len(types) == 0 {
-		return nil, fmt.Errorf("no allowed types: %v", config.Types)
-	}
-
-	interval, err := strconv.Atoi(config.Interval)
+	yamlFile, err := os.ReadFile(arguments.ConfigFilePath)
 	if err != nil {
-		return nil, karma.Format(err, "parse int: %v", config.Interval)
+		return nil, karma.Format(err, "read config file")
 	}
 
-	return &Config{
-		Exchanges: exchanges,
-		Types:     types,
-		Symbols:   symbols,
-		Interval:  time.Second * time.Duration(interval),
-	}, nil
+	var config config
+
+	if err := yaml.Unmarshal(yamlFile, &config); err != nil {
+		return nil, karma.Format(err, "unmarshal yaml file")
+	}
+
+	return &config, nil
 }

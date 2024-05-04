@@ -7,6 +7,7 @@ require (
 	github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815
 	github.com/goccy/go-json v0.10.2
 	github.com/reconquest/karma-go v1.4.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

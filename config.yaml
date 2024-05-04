@@ -1,0 +1,9 @@
+exchanges:
+  BINANCE:
+    ORDER_BOOK:
+      BTCUSDT:
+        1s
+  LUNO:
+    ORDER_BOOK:
+      XBTMYR:
+        1s

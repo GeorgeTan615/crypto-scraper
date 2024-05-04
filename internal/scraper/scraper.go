@@ -44,16 +44,13 @@ func (sm *ScrapperManager) Init() {
 
 func (sm *ScrapperManager) Start(
 	ctx context.Context,
-	inputExchanges []types.Exchange,
-	inputTypes []types.Type,
-	symbols []string,
-	interval time.Duration,
+	exchangesConfig map[types.Exchange]map[types.Type]map[string]time.Duration,
 ) {
 	var wg sync.WaitGroup
 
-	for _, exchange := range inputExchanges {
-		for _, typ := range inputTypes {
-			for _, symbol := range symbols {
+	for exchange, typsMap := range exchangesConfig {
+		for typ, symbolsMap := range typsMap {
+			for symbol, interval := range symbolsMap {
 				logContext := karma.
 					Describe("exchange", exchange).
 					Describe("type", typ)
@@ -101,7 +98,8 @@ func (sm *ScrapperManager) StartScrapper(
 	logContext := karma.
 		Describe("exchange", exchange).
 		Describe("type", typ).
-		Describe("symbol", symbol)
+		Describe("symbol", symbol).
+		Describe("interval", interval)
 
 	// create destinationn file
 	csvFile, err := os.Create(

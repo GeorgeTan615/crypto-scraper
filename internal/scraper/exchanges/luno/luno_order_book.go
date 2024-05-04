@@ -15,14 +15,14 @@ import (
 const _orderBookAPIPath = "/api/1/orderbook_top"
 
 type LunoOrderBookScrapper struct {
-	client    *web.Client
-	symbolMap map[string]string
+	client               *web.Client
+	symbolReplacementMap map[string]string
 }
 
 func NewLunoOrderBookScrapper() *LunoOrderBookScrapper {
 	return &LunoOrderBookScrapper{
 		client: web.NewClient(),
-		symbolMap: map[string]string{
+		symbolReplacementMap: map[string]string{
 			"BTC": "XBT",
 		},
 	}
@@ -72,7 +72,7 @@ func (s *LunoOrderBookScrapper) prepareURL(symbol string) (string, error) {
 		return "", karma.Format(err, "parse url %s", _lunoBaseURL+_orderBookAPIPath)
 	}
 
-	for initialSymbol, newSymbol := range s.symbolMap {
+	for initialSymbol, newSymbol := range s.symbolReplacementMap {
 		if strings.Contains(symbol, initialSymbol) {
 			symbol = strings.ReplaceAll(symbol, initialSymbol, newSymbol)
 			break
