@@ -23,9 +23,9 @@ func (r *orderBookResponse) UnmarshalJSON(data []byte) error {
 	}
 
 	var msg struct {
-		Timestamp int64   `json:"timestamp"`
-		Asks      []order `json:"asks"`
-		Bids      []order `json:"bids"`
+		// Timestamp int64   `json:"timestamp"`
+		Asks []order `json:"asks"`
+		Bids []order `json:"bids"`
 	}
 
 	if err := json.Unmarshal(data, &msg); err != nil {
@@ -44,7 +44,7 @@ func (r *orderBookResponse) UnmarshalJSON(data []byte) error {
 	r.BidQuantity = msg.Bids[0].Volume
 	r.AskPrice = msg.Asks[0].Price
 	r.AskQuantity = msg.Asks[0].Volume
-	r.Timestamp = time.UnixMilli(msg.Timestamp)
+	r.Timestamp = time.Now()
 
 	return nil
 }

@@ -23,14 +23,12 @@ Scrapes data off exchanges.
 Usage:
   crypto_scraper --config <config>
   crypto_scraper -h | --help
-  crypto_scraper --version
 
 Required options:
   -c --config <config>					File path to config file
 
 Options:
-  -h --help     Show this screen.
-  --version     Show version.`
+  -h --help     Show this screen.`
 
 type config struct {
 	ExchangesScrapeConfig map[types.Exchange]map[types.Type]map[string]time.Duration `yaml:"exchanges"`
@@ -50,7 +48,9 @@ func main() {
 		context.Background(),
 		os.Interrupt,
 		syscall.SIGINT,
-		syscall.SIGTERM)
+		syscall.SIGTERM,
+		syscall.SIGSEGV,
+		syscall.SIGKILL)
 	defer cancel()
 
 	sm.Start(ctx, config.ExchangesScrapeConfig)

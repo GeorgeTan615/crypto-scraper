@@ -17,6 +17,8 @@ import (
 	"github.com/reconquest/karma-go"
 )
 
+const _scraperTimeout = 10 * time.Second
+
 type (
 	Scrapper interface {
 		Scrape(ctx context.Context, req *message.ScrapeRequest) (message.CSVData, error)
@@ -142,7 +144,7 @@ func (sm *ScrapperManager) StartScrapper(
 
 	// start scheduler to scrape data periodically
 	scheduler := scheduler.NewScheduler(interval, func(c context.Context) {
-		ctx, cancel := context.WithTimeout(c, 5*time.Second)
+		ctx, cancel := context.WithTimeout(c, _scraperTimeout)
 		defer cancel()
 
 		csvData, err := scraper.Scrape(ctx, &message.ScrapeRequest{Symbol: symbol})
