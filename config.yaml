@@ -7,3 +7,7 @@ exchanges:
     ORDER_BOOK:
       XBTMYR:
         1s
+  BYBIT:
+    ORDER_BOOK:
+      BTCUSDT:
+        1s

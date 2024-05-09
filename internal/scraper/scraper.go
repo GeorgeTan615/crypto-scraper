@@ -11,6 +11,7 @@ import (
 
 	"github.com/crypto-scraper/internal/scheduler"
 	"github.com/crypto-scraper/internal/scraper/exchanges/binance"
+	"github.com/crypto-scraper/internal/scraper/exchanges/bybit"
 	"github.com/crypto-scraper/internal/scraper/exchanges/luno"
 	"github.com/crypto-scraper/internal/scraper/message"
 	"github.com/crypto-scraper/internal/types"
@@ -30,16 +31,17 @@ type (
 )
 
 func NewScrapperManager() *ScrapperManager {
-	return &ScrapperManager{}
-}
-
-func (sm *ScrapperManager) Init() {
-	sm.registry = map[types.Exchange]map[types.Type]Scrapper{
-		types.BINANCE: {
-			types.ORDER_BOOK: binance.NewBinanceOrderBookScrapper(),
-		},
-		types.LUNO: {
-			types.ORDER_BOOK: luno.NewLunoOrderBookScrapper(),
+	return &ScrapperManager{
+		registry: map[types.Exchange]map[types.Type]Scrapper{
+			types.BINANCE: {
+				types.ORDER_BOOK: binance.NewBinanceOrderBookScrapper(),
+			},
+			types.LUNO: {
+				types.ORDER_BOOK: luno.NewLunoOrderBookScrapper(),
+			},
+			types.BYBIT: {
+				types.ORDER_BOOK: bybit.NewBybitOrderBookScrapper(),
+			},
 		},
 	}
 }

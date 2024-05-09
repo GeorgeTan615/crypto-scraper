@@ -42,7 +42,6 @@ func main() {
 	}
 
 	sm := scraper.NewScrapperManager()
-	sm.Init()
 
 	ctx, cancel := signal.NotifyContext(
 		context.Background(),

@@ -6,4 +6,5 @@ const (
 	UNKNOWN_EXCHANGE Exchange = ""
 	LUNO             Exchange = "LUNO"
 	BINANCE          Exchange = "BINANCE"
+	BYBIT            Exchange = "BYBIT"
 )
